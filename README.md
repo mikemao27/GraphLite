@@ -1,0 +1,2 @@
+## Welcome to GraphLite
+GraphLite is an open source Python based library that supports more interactive and higher quality graph and mathematics visualization. Beyond simple visualization, GraphLite also integrates many typical graph algorithms such as BFS, DFS, Dijkstra's, Prim's A*, cycle detection, coloring, etc. alongside their visual components for ease of use and intuitive understanding.
