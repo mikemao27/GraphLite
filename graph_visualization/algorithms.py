@@ -147,7 +147,6 @@ def A_star_generator(graph: Graph, start_node, end_node, heuristic: Callable[[An
     f_cost = {start_node: heuristic(start_node, end_node)}
     open_set = Q.PriorityQueue()
     closed_set = set()
-    open_set = set()
     open_set.put((f_cost[start_node], start_node))
 
     while not open_set.empty():
@@ -393,7 +392,7 @@ def Kruskal(graph: Graph):
     for node in graph:
         for neighbor, weight in graph[node].items():
             if (weight, neighbor, node) not in edges:
-                edges.append(weight, node, neighbor)
+                edges.append((weight, node, neighbor))
     edges.sort()
 
     mst = {node: None for node in graph}
@@ -445,7 +444,8 @@ def topological_sort(graph: Graph):
         if node not in visited:
             dfs(node)
 
-    return order.reverse()
+    order.reverse()
+    return order
 
 def topological_sort_generator(graph: Graph) -> Generator[dict, None, None]:
     assert graph._is_directed, \
