@@ -277,6 +277,33 @@ def Bellman_Ford(graph: Graph, start_node, end_node):
     
     return traversal
 
+def Bellman_Ford_generator(graph: Graph, start_node, end_node) -> Generator[dict, None, None]:
+    assert start_node in graph and end_node in graph, \
+        f"start_node {start_node} and end_node {end_node} must both be in graph"
+
+    dist = {node: float("inf") for node in graph}
+    dist[start_node] = 0
+    traversal = {start_node: None}
+    nodes = list(graph)
+
+    for _ in range(len(nodes) - 1):
+        for node in graph:
+            for neighbor, weight in graph[node].items():
+                if dist[node] + weight < dist.get(neighbor, float("inf")):
+                    dist[neighbor] = dist[node] + weight
+                    traversal[neighbor] = node
+                    yield {
+                        "current": node,
+                        "relaxed": neighbor,
+                        "dist": dict(dist),
+                        "traversal": dict(traversal)
+                    }
+
+    for node in graph:
+        for neighbor, weight in graph[node].items():
+            if dist[node] + weight < dist[neighbor]:
+                raise ValueError("graph contains a negative cycle")
+
 def Prim(graph: Graph, start_node):
     assert start_node in graph, \
         f"the start node {start_node} must be a node in {graph}"
@@ -338,9 +365,11 @@ def Prim_generator(graph: Graph, start_node) -> Generator[dict, None, None]:
                     g_cost[neighbor] = edge_weight
 
 def Kruskal(graph: Graph):
-    assert graph, "the graph must not be empty"
-
+    assert not graph._is_directed, \
+        f"Kruskal's algorithm requires an undirected graph"
+    
     parent = {node: node for node in graph}
+    rank = {node: 0 for node in graph}
 
     def find(node):
         if parent[node] != node:
@@ -348,23 +377,96 @@ def Kruskal(graph: Graph):
         return parent[node]
     
     def union(a, b):
-        parent[find(a)] = find(b)
+        root_a, root_b = find(a), find(b)
+        if root_a == root_b:
+            return False
+        
+        if rank[root_a] < rank[root_b]:
+            root_a, root_b = root_b, root_a
+        parent[root_b] = root_a
+
+        if rank[root_a] == rank[root_b]:
+            rank[root_a] += 1
+        return True
+    
+    edges = []
+    for node in graph:
+        for neighbor, weight in graph[node].items():
+            if (weight, neighbor, node) not in edges:
+                edges.append(weight, node, neighbor)
+    edges.sort()
+
+    mst = {node: None for node in graph}
+
+    for weight, u, v in edges:
+        if union(u, v):
+            mst[v] = u
+    
+    return mst
+
+def Kruskal_generator(graph: Graph) -> Generator[dict, None, None]:
+    assert not graph._is_directed, \
+        "Kruskal's algorithm requires an undirected graph"
+
+    parent = {node: node for node in graph}
+    rank = {node: 0 for node in graph}
+
+    def find(node):
+        if parent[node] != node:
+            parent[node] = find(parent[node])
+        return parent[node]
+
+    def union(a, b):
+        root_a, root_b = find(a), find(b)
+        if root_a == root_b:
+            return False
+        if rank[root_a] < rank[root_b]:
+            root_a, root_b = root_b, root_a
+        parent[root_b] = root_a
+        if rank[root_a] == rank[root_b]:
+            rank[root_a] += 1
+        return True
 
 def topological_sort(graph: Graph):
-    assert graph._is_directed, "topological sort only works for directed graphs"
+    assert graph._is_directed, \
+        "topological sort requires a directed graph"
 
     visited = set()
     order = []
 
-    def DFS(node):
+    def dfs(node):
         visited.add(node)
         for neighbor in graph[node]:
             if neighbor not in visited:
-                DFS(neighbor)
+                dfs(neighbor)
         order.append(node)
 
     for node in graph:
         if node not in visited:
-            DFS(node)
+            dfs(node)
 
     return order.reverse()
+
+def topological_sort_generator(graph: Graph) -> Generator[dict, None, None]:
+    assert graph._is_directed, \
+        "topological sort requires a directed graph"
+
+    visited = set()
+    order = []
+
+    def dfs(node):
+        visited.add(node)
+        for neighbor in graph[node]:
+            if neighbor not in visited:
+                dfs(neighbor)
+        order.append(node)
+
+    for node in graph:
+        if node not in visited:
+            dfs(node)
+
+    for i, node in enumerate(reversed(order)):
+        yield {
+            "current": node,
+            "order_so_far": list(reversed(order))[: i + 1]
+        }
