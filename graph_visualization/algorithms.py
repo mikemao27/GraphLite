@@ -1,6 +1,6 @@
 from .graph import Graph
 import queue as Q
-from typing import Any, Callable
+from typing import Any, Callable, Generator
 
 def BFS(graph: Graph, start_node, end_node):
     assert start_node in graph and end_node in graph, \
@@ -25,6 +25,33 @@ def BFS(graph: Graph, start_node, end_node):
     
     return traversal
 
+def BFS_generator(graph: Graph, start_node, end_node) -> Generator[dict, None, None]:
+    assert start_node in graph and end_node in graph, \
+        f"the start_node {start_node} and end_node {end_node} should both be nodes in {graph}"
+    
+    queue = Q.Queue()
+    traversal = {node: None for node in graph}
+    visited = set()
+    queue.put(start_node)
+
+    while not queue.empty():
+        node = queue.get()
+        visited.add(node)
+
+        yield {
+            "current": node,
+            "visited": set(visited),
+            "frontier": list(queue.queue),
+            "traversal": dict(traversal)
+        }
+
+        for neighbor in graph[node]:
+            if traversal[neighbor] is None and neighbor != start_node:
+                traversal[neighbor] = node
+                queue.put(neighbor)
+                if neighbor == end_node:
+                    return
+
 def DFS(graph: Graph, start_node, end_node):
     assert start_node in graph and end_node in graph, \
         f"the start_node {start_node} and end_node {end_node} should both be nodes in {graph}"
@@ -47,6 +74,33 @@ def DFS(graph: Graph, start_node, end_node):
                     return traversal
     
     return traversal
+
+def DFS_generator(graph: Graph, start_node, end_node) -> Generator[dict, None, None]:
+    assert start_node in graph and end_node in graph, \
+        f"the start_node {start_node} and end_node {end_node} should both be nodes in {graph}"
+    
+    stack = Q.LifoQueue()
+    traversal = {node: None for node in graph}
+    visited = set()
+    stack.put(start_node)
+
+    while not stack.empty():
+        node = stack.get()
+        visited.add(node)
+
+        yield {
+            "current": node,
+            "visited": set(visited),
+            "frontier": list(stack.queue),
+            "traversal": dict(traversal)
+        }
+
+        for neighbor in graph[node]:
+            if traversal[neighbor] is None and neighbor != start_node:
+                traversal[neighbor] = node
+                stack.put(neighbor)
+                if neighbor == end_node:
+                    return
 
 # note that the heuristic estimator needs to be implemented and is currently not available
 def A_star(graph: Graph, start_node, end_node, heuristic: Callable[[Any, Any], float]):
@@ -84,6 +138,46 @@ def A_star(graph: Graph, start_node, end_node, heuristic: Callable[[Any, Any], f
     
     return traversal
 
+def A_star_generator(graph: Graph, start_node, end_node, heuristic: Callable[[Any, Any], float]) -> Generator[dict, None, None]:
+    assert start_node in graph and end_node in graph, \
+        f"the start node {start_node} and end_node {end_node} should both be nodes in {graph}"
+    
+    traversal = {start_node: None}
+    g_cost = {start_node: 0}
+    f_cost = {start_node: heuristic(start_node, end_node)}
+    open_set = Q.PriorityQueue()
+    closed_set = set()
+    open_set = set()
+    open_set.put((f_cost[start_node], start_node))
+
+    while not open_set.empty():
+        _, node = open_set.get()
+
+        if node in closed_set:
+            continue
+        closed_set.add(node)
+
+        yield {
+            "current": node,
+            "visited": set(closed_set),
+            "g_cost": dict(g_cost),
+            "f_cost": dict(f_cost),
+            "traversal": dict(traversal)
+        }
+
+        if node == end_node:
+            return
+        
+        for neighbor in graph[node]:
+            if neighbor not in closed_set:
+                neighbor_g_cost = graph[node][neighbor] + g_cost[node]
+
+                if neighbor_g_cost < g_cost.get(neighbor, float("inf")):
+                    g_cost[neighbor] = neighbor_g_cost
+                    f_cost[neighbor] = neighbor_g_cost + heuristic(neighbor, end_node)
+                    traversal[neighbor] = node
+                    open_set.put((f_cost[neighbor], neighbor))
+
 def Dijkstra(graph: Graph, start_node, end_node):
     assert start_node in graph and end_node in graph, \
         f"the start node {start_node} and end_node {end_node} should both be nodes in {graph}"
@@ -120,6 +214,69 @@ def Dijkstra(graph: Graph, start_node, end_node):
 
     return traversal
 
+def Dijkstra_generator(graph: Graph, start_node, end_node) -> Generator[dict, None, None]:
+    assert start_node in graph and end_node in graph, \
+        f"the start node {start_node} and end_node {end_node} should both be nodes in {graph}"
+    
+    assert all(weight >= 0 for node in graph for weight in graph[node].values()), \
+        f"Dijkstra's requires non-negative edge weights. Use Bellman-Ford for negative edge weights."
+    
+    traversal = {start_node: None}
+    g_cost = {start_node: 0}
+    open_set = Q.PriorityQueue()
+    closed_set = set()
+    open_set.put((0, start_node))
+
+    while not open_set.empty():
+        _, node = open_set.get()
+
+        if node in closed_set:
+            continue
+        closed_set.add(node)
+
+        yield {
+            "current": node,
+            "visited": set(closed_set),
+            "g_cost": dict(g_cost),
+            "traversal": dict(traversal)
+        }
+
+        if node == end_node:
+            return
+        
+        for neighbor in graph[node]:
+            if neighbor not in closed_set:
+                neighbor_g_cost = graph[node][neighbor] + g_cost[node]
+
+                if neighbor_g_cost < g_cost.get(neighbor, float("inf")):
+                    g_cost[neighbor] = neighbor_g_cost
+                    traversal[neighbor] = node
+                    open_set.put((g_cost[neighbor], neighbor))
+
+def Bellman_Ford(graph: Graph, start_node, end_node):
+    assert start_node in graph and end_node in graph, \
+        f"the start node {start_node} and end_node {end_node} should both be nodes in {graph}"
+    
+    distance = {node: float("inf") for node in graph}
+    distance[start_node] = 0
+
+    traversal = {start_node: None}
+
+    for _ in range(len(graph) - 1):
+        for node in graph:
+            for neighbor in graph[node]:
+                if distance[node] + graph[node][neighbor] < distance[neighbor]:
+                    distance[neighbor] = distance[node] + graph[node][neighbor]
+                    traversal[neighbor] = node
+    
+    # check for negative weight cycles
+    for node in graph:
+        for neighbor in graph[node]:
+            if distance[node] + graph[node][neighbor] < distance[neighbor]:
+                raise ValueError("graph contains a negative weight cycle")
+    
+    return traversal
+
 def Prim(graph: Graph, start_node):
     assert start_node in graph, \
         f"the start node {start_node} must be a node in {graph}"
@@ -148,3 +305,66 @@ def Prim(graph: Graph, start_node):
     
     return traversal
 
+def Prim_generator(graph: Graph, start_node) -> Generator[dict, None, None]:
+    assert start_node in graph, \
+        f"the start node {start_node} must be a node in {graph}"
+    
+    traversal = {start_node: None}
+    visited = set()
+    g_cost = {start_node: 0}
+    open_set = Q.PriorityQueue()
+    open_set.put((0, start_node))
+
+    while not open_set.empty():
+        _, node = open_set.get()
+
+        if node in visited:
+            continue
+        visited.add(node)
+
+        yield {
+            "current": node,
+            "visited": set(visited),
+            "mst_edges": {k: v for k, v in traversal.items() if v is not None},
+            "traversal": dict(traversal)
+        }
+
+        for neighbor in graph[node]:
+            if neighbor not in visited:
+                edge_weight = graph[node][neighbor]
+                open_set.put((edge_weight, neighbor))
+                if neighbor not in traversal or edge_weight < g_cost.get(neighbor, float("inf")):
+                    traversal[neighbor] = node
+                    g_cost[neighbor] = edge_weight
+
+def Kruskal(graph: Graph):
+    assert graph, "the graph must not be empty"
+
+    parent = {node: node for node in graph}
+
+    def find(node):
+        if parent[node] != node:
+            parent[node] = find(parent[node])
+        return parent[node]
+    
+    def union(a, b):
+        parent[find(a)] = find(b)
+
+def topological_sort(graph: Graph):
+    assert graph._is_directed, "topological sort only works for directed graphs"
+
+    visited = set()
+    order = []
+
+    def DFS(node):
+        visited.add(node)
+        for neighbor in graph[node]:
+            if neighbor not in visited:
+                DFS(neighbor)
+        order.append(node)
+
+    for node in graph:
+        if node not in visited:
+            DFS(node)
+
+    return order.reverse()
