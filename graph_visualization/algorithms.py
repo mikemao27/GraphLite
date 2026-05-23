@@ -425,6 +425,24 @@ def Kruskal_generator(graph: Graph) -> Generator[dict, None, None]:
         if rank[root_a] == rank[root_b]:
             rank[root_a] += 1
         return True
+    
+    edges = []
+    for node in graph:
+        for neighbor, weight in graph[node].items():
+            if (weight, neighbor, node) not in edges:
+                edges.append((weight, node, neighbor))
+    edges.sort()
+
+    mst = {node: None for node in graph}
+
+    for weight, u, v in edges:
+        if union(u, v):
+            mst[v] = u
+            yield {
+                "current_edge": (u, v),
+                "mst_edges": {k: val for k, val in mst.items() if val is not None},
+                "weight": weight
+            }
 
 def topological_sort(graph: Graph):
     assert graph._is_directed, \

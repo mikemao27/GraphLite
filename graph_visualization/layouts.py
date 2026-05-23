@@ -1,6 +1,6 @@
 import math
 import random
-from graph_visualization.algorithms import Graph
+from graph_visualization.graph import Graph
 
 def euclidean_heuristic(pos: dict):
     # returns a heuristic function bound to the given layout positions.
