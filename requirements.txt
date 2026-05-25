@@ -1,0 +1,5 @@
+# runtime
+pygame-ce >= 2.4.0
+
+# development / testing (optional)
+pytest >= 8.0

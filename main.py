@@ -1,3 +1,6 @@
-from graph_visualization.renderer import launch
-
-launch(directed=False)  # pass directed=True for directed graphs
+from graph_visualization import launch
+ 
+# pass directed=True to default to directed edges, or leave as False for undirected.
+# either way you can override per-edge in the UI with T.
+launch(directed=False)
+ 
